@@ -1,0 +1,40 @@
+name: render-pajajaran
+on:
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Backsound gamelan (synth, tanpa sample)
+        run: |
+          pip install numpy
+          python3 scripts/make_gamelan.py
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Remotion browser
+        run: npx remotion browser ensure
+
+      - name: Render 15 detik (450 frame, 1920x1080)
+        run: |
+          mkdir -p out
+          npx remotion render src/index.ts Pajajaran out/pajajaran.mp4 \
+            --codec=h264 --crf=18 --pixel-format=yuv420p \
+            --gl=swangle --concurrency=2
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pajajaran-15s
+          path: out/pajajaran.mp4
