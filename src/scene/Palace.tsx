@@ -43,7 +43,42 @@ const RoofTier: React.FC<{ radius: number; height: number; y: number }> = ({
     </mesh>
     <mesh rotation={[0, Math.PI / 4, 0]} castShadow>
       <coneGeometry args={[radius, height, 4]} />
-      <meshStandardMaterial color="#D4AF37" metalness={0.3} roughness={0.45} />
+      <meshStandardMaterial color="#D4AF37" metalness={0.3} roughness={0.6} />
+    </mesh>
+  </group>
+);
+
+// Pendopo kecil di kejauhan — kompleks istana, bukan satu saung.
+const MiniPavilion: React.FC<{ x: number; z: number; s?: number }> = ({
+  x,
+  z,
+  s = 0.55,
+}) => (
+  <group position={[x, 0, z]} scale={s}>
+    <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
+      <boxGeometry args={[10, 0.8, 8]} />
+      <meshStandardMaterial color={STONE_DARK} roughness={0.9} />
+    </mesh>
+    <mesh position={[0, 1.1, 0]} castShadow receiveShadow>
+      <boxGeometry args={[7, 0.6, 5.5]} />
+      <meshStandardMaterial color={STONE} roughness={0.9} />
+    </mesh>
+    {([
+      [-3, -2],
+      [3, -2],
+      [-3, 2],
+      [3, 2],
+    ] as [number, number][]).map(([cx, cz], i) => (
+      <mesh key={i} position={[cx, 2.6, cz]} castShadow>
+        <cylinderGeometry args={[0.18, 0.22, 2.4, 8]} />
+        <meshStandardMaterial color={RED} roughness={0.6} />
+      </mesh>
+    ))}
+    <RoofTier radius={4.2} height={1.3} y={4.4} />
+    <RoofTier radius={2.9} height={1.1} y={5.6} />
+    <mesh position={[0, 6.5, 0]}>
+      <sphereGeometry args={[0.25, 10, 8]} />
+      <meshStandardMaterial color={GOLD_LIGHT} metalness={0.9} roughness={0.25} />
     </mesh>
   </group>
 );
@@ -109,16 +144,49 @@ const Cloud: React.FC<{ x: number; y: number; z: number; s: number; frame: numbe
     <group position={[x + drift, y, z]} scale={[s, s * 0.45, s]}>
       <mesh>
         <sphereGeometry args={[1.6, 12, 10]} />
-        <meshStandardMaterial color="#FFF3DC" roughness={1} transparent opacity={0.92} />
+        <meshBasicMaterial color="#FFE9C4" transparent opacity={0.92} />
       </mesh>
       <mesh position={[1.6, -0.15, 0.2]}>
         <sphereGeometry args={[1.1, 12, 10]} />
-        <meshStandardMaterial color="#FFF3DC" roughness={1} transparent opacity={0.9} />
+        <meshBasicMaterial color="#FFE9C4" transparent opacity={0.9} />
       </mesh>
       <mesh position={[-1.5, -0.2, -0.2]}>
         <sphereGeometry args={[1.0, 12, 10]} />
-        <meshStandardMaterial color="#FFE9C4" roughness={1} transparent opacity={0.9} />
+        <meshBasicMaterial color="#FFE9C4" transparent opacity={0.9} />
       </mesh>
+    </group>
+  );
+};
+
+// Burung di kejauhan — satu elemen latar yang hidup (ala Taj Mahal §5).
+const Birds: React.FC<{ frame: number }> = ({ frame }) => {
+  const t = frame / 30;
+  return (
+    <group rotation={[0, t * 0.12, 0]}>
+      {[0, 1, 2].map((i) => {
+        const a = (i / 3) * Math.PI * 2;
+        const flap = Math.sin(t * 6 + i * 2.1) * 0.6;
+        return (
+          <group
+            key={i}
+            position={[
+              Math.cos(a) * 26,
+              20 + Math.sin(t * 0.8 + i) * 1.2,
+              Math.sin(a) * 26,
+            ]}
+            rotation={[0, -a, 0]}
+          >
+            <mesh position={[-0.35, 0, 0]} rotation={[0, 0, flap]}>
+              <boxGeometry args={[0.7, 0.04, 0.25]} />
+              <meshStandardMaterial color="#1E2430" roughness={1} />
+            </mesh>
+            <mesh position={[0.35, 0, 0]} rotation={[0, 0, -flap]}>
+              <boxGeometry args={[0.7, 0.04, 0.25]} />
+              <meshStandardMaterial color="#1E2430" roughness={1} />
+            </mesh>
+          </group>
+        );
+      })}
     </group>
   );
 };
@@ -128,9 +196,10 @@ export const Palace: React.FC<{ frame: number }> = ({ frame }) => {
   const dust = useMemo(
     () =>
       Array.from({ length: 36 }, (_, i) => ({
-        x: (random("dx" + i) - 0.5) * 16,
+        // Debu emas terkonsentrasi di shaft cahaya matahari (belakang istana).
+        x: (random("dx" + i) - 0.5) * 12 - 2,
         y: 3 + random("dy" + i) * 7,
-        z: (random("dz" + i) - 0.5) * 12 + 1,
+        z: (random("dz" + i) - 0.5) * 8 - 2,
         r: 0.04 + random("dr" + i) * 0.05,
         p: random("dp" + i) * Math.PI * 2,
       })),
@@ -140,18 +209,20 @@ export const Palace: React.FC<{ frame: number }> = ({ frame }) => {
 
   return (
     <group>
-      <fog attach="fog" args={["#E9A85C", 55, 115]} />
+      {/* FogExp2 (Fable-5 §3a) — jatuh lembut, warna horizon fajar. */}
+      <fogExp2 attach="fog" args={["#E8C9A6", 0.005]} />
 
       {/* Langit fajar: bola besar, gradien di sisi dalam (fog dimatikan) */}
       <mesh>
         <sphereGeometry args={[130, 24, 16]} />
         <meshBasicMaterial map={sky} side={THREE.BackSide} fog={false} />
       </mesh>
-      <mesh position={[-19, 16, -34]}>
+      {/* Matahari rendah di arah backlight (sama dengan directional light). */}
+      <mesh position={[-74, 30, -88]}>
         <sphereGeometry args={[2.4, 20, 16]} />
         <meshStandardMaterial color="#FFD27A" emissive="#FFC85E" emissiveIntensity={1.8} />
       </mesh>
-      <mesh position={[-19, 16, -34]}>
+      <mesh position={[-74, 30, -88]}>
         <sphereGeometry args={[4.2, 20, 16]} />
         <meshBasicMaterial color="#FFD27A" transparent opacity={0.22} />
       </mesh>
@@ -184,9 +255,28 @@ export const Palace: React.FC<{ frame: number }> = ({ frame }) => {
         <meshStandardMaterial color={PATH} roughness={0.95} />
       </mesh>
 
+      {/* Kabut tanah pagi */}
+      {([
+        [-8, -6],
+        [9, -8],
+        [-11, 8],
+        [10, 9],
+        [0, -13],
+      ] as [number, number][]).map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.5, z]} scale={[14, 1.4, 7]}>
+          <sphereGeometry args={[1, 16, 12]} />
+          <meshBasicMaterial color="#FFE9C4" transparent opacity={0.12} depthWrite={false} />
+        </mesh>
+      ))}
+
       <Cloud x={-14} y={17} z={-24} s={2.2} frame={frame} />
       <Cloud x={8} y={19} z={-28} s={2.8} frame={frame} />
       <Cloud x={20} y={15} z={-20} s={1.8} frame={frame} />
+      <Birds frame={frame} />
+
+      {/* Pendopo kecil di kejauhan — kompleks istana */}
+      <MiniPavilion x={-20} z={-16} />
+      <MiniPavilion x={20} z={-14} s={0.5} />
 
       {/* Teras batu bertingkat */}
       <mesh position={[0, 0.5, 0]} castShadow receiveShadow>
@@ -297,6 +387,9 @@ export const Palace: React.FC<{ frame: number }> = ({ frame }) => {
         </mesh>
       </group>
 
+      {/* Lampu hangat di dalam pendopo — menerangi bawah atap (ala Wind-Up lamp). */}
+      <pointLight position={[0, 5.5, 0]} intensity={10} distance={14} decay={2} color="#FFC890" />
+
       {/* Harta: mangkuk emas kiri, permata kanan */}
       {[
         [-2.3, 2.7],
@@ -319,6 +412,25 @@ export const Palace: React.FC<{ frame: number }> = ({ frame }) => {
           <sphereGeometry args={[0.16, 10, 8]} />
           <meshStandardMaterial color={c as string} roughness={0.15} metalness={0.4} />
         </mesh>
+      ))}
+
+      {/* Obor di sisi tangga */}
+      {[-3, 3].map((x) => (
+        <group key={x} position={[x, 0, 7.5]}>
+          <mesh position={[0, 1.6, 0]} castShadow>
+            <cylinderGeometry args={[0.09, 0.12, 3.2, 8]} />
+            <meshStandardMaterial color={WOOD} roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 3.4, 0]}>
+            <cylinderGeometry args={[0.22, 0.14, 0.4, 8]} />
+            <meshStandardMaterial color={GOLD} metalness={0.7} roughness={0.4} />
+          </mesh>
+          <mesh position={[0, 3.8, 0]}>
+            <sphereGeometry args={[0.22, 10, 8]} />
+            <meshStandardMaterial color="#FFB347" emissive="#FF7A1A" emissiveIntensity={2.5} />
+          </mesh>
+          <pointLight position={[0, 4, 0]} intensity={12} distance={10} decay={2} color="#FF9A3C" />
+        </group>
       ))}
 
       {/* Panji merah + umbul-umbul (digeser keluar dari jalur kamera) */}
