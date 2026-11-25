@@ -9,6 +9,13 @@ export type CamKey = {
   fov: number;
 };
 
+export type Shot = {
+  name: string;
+  from: number;
+  to: number;
+  keys: CamKey[];
+};
+
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const ease = Easing.inOut(Easing.cubic);
 
@@ -34,24 +41,70 @@ export const sampleCam = (keys: CamKey[], frame: number) => {
   return keys[keys.length - 1];
 };
 
-export const CameraRig: React.FC<{ keys: CamKey[]; frame: number }> = ({
-  keys,
+export const CameraRig: React.FC<{ shots: Shot[]; frame: number }> = ({
+  shots,
   frame,
 }) => {
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
-  const k = sampleCam(keys, frame);
-  camera.position.set(...k.pos);
+  const shot =
+    shots.find((s) => frame >= s.from && frame < s.to) ??
+    shots[shots.length - 1];
+  const local = frame - shot.from;
+  const k = sampleCam(shot.keys, local);
+  // Handheld breath (ala Taj Mahal §1c): napas halus, bukan guncangan.
+  const breathY = Math.sin(frame * 0.0567) * 0.05;
+  const breathRoll = Math.sin(frame * 0.03) * 0.0018;
+  camera.position.set(k.pos[0], k.pos[1] + breathY, k.pos[2]);
   camera.fov = k.fov;
   camera.lookAt(...k.look);
+  camera.rotation.z += breathRoll;
   camera.updateProjectionMatrix();
   return null;
 };
 
-// Satu gerakan kamera kontinu 15 detik: wide istana -> teras -> singgasana.
-// f0: establishing, f150: teras & atap, f300: singgasana, f449: mahkota.
-export const CAM_KEYS: CamKey[] = [
-  { f: 0, pos: [26, 13, 32], look: [0, 5, 0], fov: 50 },
-  { f: 150, pos: [17, 10, 24], look: [0, 4.5, 0], fov: 44 },
-  { f: 300, pos: [8, 6, 12], look: [0, 4.2, 2], fov: 38 },
-  { f: 449, pos: [4.2, 4.8, 7], look: [0, 4.2, 2.6], fov: 32 },
+// Cut list 4 shot bernama (ala Wind-Up 10 shot / Taj 6 beat) — BUKAN 1 dolly.
+// Shot 1 "Fajar di Pakuan" f0-90: establishing push-in, FOV lebar.
+// Shot 2 "Singgasana" f90-210: orbit pelan mengelilingi singgasana/mahkota, FOV 38.
+// Shot 3 "Mahkota" f210-330: crane naik + reveal kompleks, lalu hold di puncak.
+// Shot 4 "Kemewahan" f330-450: slow push-in ke mahkota, FOV mengecil 44->36.
+export const SHOTS: Shot[] = [
+  {
+    name: "Fajar di Pakuan",
+    from: 0,
+    to: 90,
+    keys: [
+      { f: 0, pos: [30, 15, 38], look: [0, 5, 0], fov: 50 },
+      { f: 90, pos: [24, 12, 30], look: [0, 5, 0], fov: 46 },
+    ],
+  },
+  {
+    name: "Singgasana",
+    from: 90,
+    to: 210,
+    keys: [
+      { f: 0, pos: [10, 6.2, 11], look: [0, 4.2, 2.2], fov: 38 },
+      { f: 60, pos: [2, 6.5, 13], look: [0, 4.2, 2.2], fov: 38 },
+      { f: 120, pos: [-8, 6.2, 10], look: [0, 4.2, 2.2], fov: 38 },
+    ],
+  },
+  {
+    name: "Mahkota",
+    from: 210,
+    to: 330,
+    keys: [
+      { f: 0, pos: [6, 3.5, 11], look: [0, 6, 0], fov: 44 },
+      { f: 60, pos: [12, 9, 18], look: [0, 4.5, 0], fov: 44 },
+      { f: 90, pos: [18, 16, 24], look: [0, 4, 0], fov: 44 },
+      { f: 120, pos: [18, 16, 24], look: [0, 4, 0], fov: 44 },
+    ],
+  },
+  {
+    name: "Kemewahan",
+    from: 330,
+    to: 450,
+    keys: [
+      { f: 0, pos: [8, 6.5, 12], look: [0, 4.5, 2.2], fov: 44 },
+      { f: 120, pos: [6, 6, 9.5], look: [0, 4.5, 2.2], fov: 36 },
+    ],
+  },
 ];
